@@ -2007,6 +2007,30 @@ class OrbeWindow {
     this.changed();
   }
 
+  // Supprime la sélection : les épinglés et les favoris définitivement, les
+  // onglets du jour par l'archive comme à leur fermeture. Une seule action ⌘Z.
+  deleteTabs(ids) {
+    ids = this.checkIds(ids);
+    if (!ids.length) return;
+    const hard = ids.filter((id) => this.locate(id).list !== 'today');
+    if (!hard.length) return this.closeMany(ids);
+    const only = ids.length === 1 ? this.locate(ids[0]) : null;
+    let back = this.removeTabs(ids);
+    if (!back) return;
+    const label = ids.length > 1 ? 'undo.deleteTabs' : (only.list === 'favorites' ? 'undo.deleteFavorite' : 'undo.deletePinned');
+    this.record(label, () => back(), () => { back = this.removeTabs(ids) || back; },
+      (way) => (way === 'undo' ? ids.every((id) => this.data.tabs[id]) : !ids.some((id) => this.data.tabs[id])));
+    const archived = ids.length - hard.length;
+    const message = hard.length === 1 && !archived ? 'toast.tabDeleted' : archived ? 'toast.tabsDeletedMixed' : 'toast.tabsDeleted';
+    const vars = archived ? { p: hard.length, n: archived } : { n: hard.length };
+    this.toast(require('./shortcuts').inText(t(message, vars), 'undo'));
+    this.dropSelection();
+    this.layout();
+    this.focusContent();
+    this.remember();
+    this.changed();
+  }
+
   // Dépose plusieurs onglets au même endroit, dans leur ordre d'affichage.
   moveMany({ ids, to, folderId, index }, label = 'undo.moveMany') {
     ids = this.checkIds(ids);
@@ -2499,6 +2523,88 @@ class OrbeWindow {
         (space.splits || (space.splits = [])).push(Object.assign(members, g.ratios && members.length === g.length ? { ratios: [...g.ratios] } : {}));
       }
       if (active && this.data.tabs[active] && !this.activeBySpace[space.id]) this.activeBySpace[space.id] = active;
+      for (const w of windows.values()) if (w.data === this.data) w.layout();
+      this.changed();
+    };
+  }
+
+  // Retire des onglets sans archive pour les épinglés et les favoris ; les
+  // onglets du jour passent par close() et gardent leur archivage. Renvoie de
+  // quoi tout rétablir, ou null.
+  removeTabs(ids) {
+    ids = this.checkIds(ids);
+    if (!ids.length) return null;
+    const hard = ids.filter((id) => this.locate(id).list !== 'today');
+    const today = ids.filter((id) => this.locate(id).list === 'today');
+    if (!hard.length) return null;
+    const places = this.places(hard);
+    const tabs = {};
+    const histories = new Map();
+    const splits = [];
+    const actives = new Map();
+    for (const id of hard) {
+      tabs[id] = { ...this.data.tabs[id] };
+      const history = this.historyOf(id) || this.histories.get(id) || null;
+      if (history) histories.set(id, history);
+      for (const sid of Object.keys(this.activeBySpace)) if (this.activeBySpace[sid] === id) actives.set(sid, id);
+      const group = this.groupOf(id);
+      if (group && !splits.some((s) => s.group === group)) {
+        const space = this.data.spaces.find((s) => (s.splits || []).includes(group));
+        if (space) splits.push({ space, group: [...group], ratios: group.ratios && [...group.ratios], vertical: this.isVertical(group) });
+      }
+    }
+    for (const id of hard) {
+      const loc = this.locate(id);
+      if (!loc) continue;
+      loc.arr.splice(loc.index, 1);
+      this.histories.delete(id);
+      OrbeWindow.destroyView(id);
+      OrbeWindow.forget(id, this.data);
+      delete this.data.tabs[id];
+    }
+    const recs = today.map((id) => this.close(id, { silent: true })).filter(Boolean);
+    // L'onglet affiché est remplacé, comme à la fermeture.
+    const spaces = new Set([this.space, ...splits.map((s) => s.space)]);
+    for (const sid of actives.keys()) {
+      const space = this.data.spaces.find((s) => s.id === sid);
+      if (space) spaces.add(space);
+    }
+    for (const space of spaces) {
+      const active = this.activeBySpace[space.id];
+      if (active && this.data.tabs[active]) continue;
+      const next = this.mostRecent(space);
+      if (next) this.activeBySpace[space.id] = next;
+      else delete this.activeBySpace[space.id];
+    }
+    for (const w of windows.values()) if (w.data === this.data) w.layout();
+    this.changed();
+    return () => {
+      const missing = hard.filter((id) => !this.data.tabs[id]);
+      for (const id of missing) this.data.tabs[id] = { ...tabs[id] };
+      for (const id of missing) if (histories.has(id)) this.histories.set(id, histories.get(id));
+      this.restorePlaces(places.filter((p) => missing.includes(p.id)));
+      this.restoreClosed(recs);
+      for (const s of splits) {
+        const members = s.group.filter((x) => this.data.tabs[x]);
+        if (members.length < 2) continue;
+        const groups = new Set(members.map((x) => this.groupOf(x)).filter(Boolean));
+        if (groups.size > 1) continue;
+        let group = [...groups][0];
+        if (group && group.some((x) => !members.includes(x))) continue;
+        const space = (group && this.data.spaces.find((x) => (x.splits || []).includes(group))) || s.space;
+        if (!space) continue;
+        if (!group) (space.splits || (space.splits = [])).push((group = []));
+        if (space.splitDirs && group.length) delete space.splitDirs[group[0]];
+        group.splice(0, group.length, ...members);
+        if (s.ratios && members.length === s.group.length) group.ratios = [...s.ratios];
+        else delete group.ratios;
+        if (s.vertical) (space.splitDirs || (space.splitDirs = {}))[group[0]] = 'v';
+      }
+      for (const [sid, id] of actives) {
+        const space = this.data.spaces.find((s) => s.id === sid);
+        const current = this.activeBySpace[sid];
+        if (space && this.data.tabs[id] && !(current && this.data.tabs[current])) this.activeBySpace[sid] = id;
+      }
       for (const w of windows.values()) if (w.data === this.data) w.layout();
       this.changed();
     };
@@ -4362,6 +4468,9 @@ class OrbeWindow {
     // Un épinglé ou un favori ne s'archive pas : sa page se ferme, il reste dans la barre.
     const kept = loc.list !== 'today';
     tpl.push({ type: 'separator' }, { label: t(kept ? 'tabs.closeKeep' : 'tabs.close'), enabled: !kept || live.has(id), click: () => this.close(id) });
+    if (pinned || fav) {
+      tpl.push({ type: 'separator' }, { label: t(fav ? 'tabs.deleteFavorite' : 'tabs.deletePinned'), click: () => this.deleteTabs([id]) });
+    }
     if (loc.list === 'today') {
       const above = loc.arr.slice(0, loc.index);
       const below = loc.arr.slice(loc.index + 1);
@@ -4398,6 +4507,9 @@ class OrbeWindow {
       tpl.push({ label: t('tabs.moveTo'), submenu: others.map((s) => ({ label: spaceLabel(s, this.data, this.space.profileId), click: () => this.moveManyToSpace(ids, s.id) })) });
     }
     tpl.push({ type: 'separator' }, { label: t('tabs.closeMany', { n }), click: () => this.closeMany(ids) });
+    if (lists.includes('pinned') || lists.includes('favorites')) {
+      tpl.push({ label: t('tabs.deleteMany', { n }), click: () => this.deleteTabs(ids) });
+    }
     return tpl;
   }
 
@@ -4789,6 +4901,7 @@ class OrbeWindow {
       case 'activate': return a === this.activeId && live.has(a) && !this.peekState ? undefined : this.activate(a);
       // Variante { ids } : l'action porte sur la sélection (liste vérifiée par checkIds).
       case 'close': return a && typeof a === 'object' ? this.closeMany(a.ids) : this.close(a);
+      case 'deleteTabs': return this.deleteTabs(a && a.ids);
       case 'select': this.selection = this.checkIds(a); return undefined;
       case 'openCommand': return this.openCommand(a);
       case 'toggleSidebar': return this.toggleSidebar();
