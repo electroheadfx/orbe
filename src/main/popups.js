@@ -31,6 +31,22 @@ const WINDOW = 5000;
 const KEEP = 8; // ouvertures bloquées gardées par page, pour « Ouvrir quand même »
 const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Escape', 'Dead', 'Unidentified']);
 
+// Fenêtres ouvertes par une page (`window.open`, lien `target=_blank`, fenêtre
+// enfant) : une popup ne doit pas télécharger sans une vraie entrée de
+// l'utilisateur en son sein (voir permissions.downloadGate). Un WeakSet ne
+// retient rien de la page et s'oublie avec la vue.
+const marked = new WeakSet();
+
+// Marque une vue enfant ouverte par une page. Rien à marquer pour un webContents
+// absent ou déjà détruit.
+function mark(wc) {
+  if (!wc) return;
+  try { if (wc.isDestroyed()) return; } catch { return; }
+  marked.add(wc);
+}
+
+const isMark = (wc) => !!wc && marked.has(wc);
+
 // Vraie entrée de l'utilisateur dans la page : appui ou relâchement d'un bouton
 // de souris, touche enfoncée.
 function gesture(rt, input) {
@@ -104,4 +120,4 @@ function menu(owner, rt, t) {
   return items;
 }
 
-module.exports = { gesture, allowed, reset, count, menu, WINDOW };
+module.exports = { gesture, allowed, reset, count, menu, mark, isMark, WINDOW };

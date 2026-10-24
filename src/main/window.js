@@ -94,8 +94,8 @@ function note(rt, what) {
 
 const hooks = {
   changed: () => {}, openLittle: () => {}, route: () => null, openRouted: () => {}, openSettings: () => {}, extensionMenu: () => [], rightInset: () => 0, layout: () => {},
-  // Raccords posés par essentials.js (feuilles d'onglet, certificats, « quitter la page ? », fenêtres surgissantes…).
-  sheetFocus: () => null, leave: () => true, closeAll: async () => true, quitState: { quitting: false }, shield: () => false, unshield: () => {}, stayed: () => Infinity, input: () => {}, popup: () => true, navigated: () => {},
+  // Raccords posés par essentials.js (feuilles d'onglet, certificats, « quitter la page ? », fenêtres surgissantes, marquage des fenêtres ouvertes par une page…).
+  sheetFocus: () => null, leave: () => true, closeAll: async () => true, quitState: { quitting: false }, shield: () => false, unshield: () => {}, stayed: () => Infinity, input: () => {}, popup: () => true, popupOpened: () => {}, navigated: () => {},
   busy: () => false, tabState: () => [], navState: () => ({}), failed: () => false, gone: () => {}, hung: () => {}, action: () => undefined, siteMenu: () => [],
   // Note « mise à jour disponible » de la barre latérale ({ version } ou null) : posée par main.js.
   updateNote: () => null,
@@ -1270,7 +1270,11 @@ class OrbeWindow {
           hooks.openLittle(details.url);
           return { action: 'deny' };
         }
-        owner.newTab(details.url, { background: true, after: rt.id });
+        const tab = owner.newTab(details.url, { background: true, after: rt.id });
+        const childRt = tab ? owner.ensureView(tab.id) : null;
+        // Une ouverture demandée par la page est une popup : elle ne téléchargera pas
+        // sans une vraie entrée de l'utilisateur (voir permissions.downloadGate).
+        if (childRt) hooks.popupOpened(childRt.wc);
         return { action: 'deny' };
       }
       // Aperçu : lien sortant d'un onglet épinglé ou d'un favori.
@@ -1283,7 +1287,11 @@ class OrbeWindow {
         const how = store.state.settings.peekShift !== false ? owner.peekTarget(details.url) : 'tab';
         if (how === 'peek') owner.openPeek(details.url, rt.id);
         else if (how === 'route') hooks.openRouted(details.url);
-        else owner.newTab(details.url, { after: rt.id });
+        else {
+          const tab = owner.newTab(details.url, { after: rt.id });
+          const childRt = tab ? owner.ensureView(tab.id) : null;
+          if (childRt) hooks.popupOpened(childRt.wc);
+        }
         return { action: 'deny' };
       }
       const how = /^https?:/i.test(details.url) && outside ? owner.peekTarget(details.url) : 'tab';
@@ -1297,6 +1305,7 @@ class OrbeWindow {
         createWindow: (options) => {
           const child = owner.createTab(details.url || 'about:blank', { after: rt.id });
           const childRt = owner.ensureView(child.id, options);
+          hooks.popupOpened(childRt.wc); // marquée avant l'activation, donc avant tout chargement
           owner.activate(child.id);
           return childRt.wc;
         },
