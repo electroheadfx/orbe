@@ -19,10 +19,13 @@
 //  - il ne survit pas à un changement de page : la page suivante ne peut pas
 //    ouvrir de fenêtre grâce au clic fait sur la précédente ;
 //  - le site peut être autorisé pour de bon (« Toujours autoriser pour ce
-//    site »), par origine, comme une autorisation.
+//    site »), par origine, comme une autorisation ;
+//  - une ouverture vers un domaine publicitaire listé et tiers est refusée même
+//    avec un geste : `window.open` ne passe pas par le filtre réseau.
 // Limite connue : un geste fait dans la page profite à n'importe quel cadre de
 // cette page pendant 5 secondes (Chromium, lui, suit l'activation cadre par cadre).
 const permissions = require('./permissions');
+const adblock = require('./adblock');
 
 const WINDOW = 5000;
 const KEEP = 8; // ouvertures bloquées gardées par page, pour « Ouvrir quand même »
@@ -44,18 +47,27 @@ function originOf(wc) {
   try { return permissions.originOf(wc.getURL()); } catch { return ''; }
 }
 
+// Enregistre une ouverture refusée : elle sert la mention discrète et le menu
+// « Ouvrir quand même ».
+function record(rt, url) {
+  const list = rt.blockedPopups || (rt.blockedPopups = []);
+  const short = /^https?:/i.test(url) ? url.slice(0, 2000) : '';
+  if (!list.some((x) => x.url === short)) list.push({ url: short, at: Date.now() });
+  if (list.length > KEEP) list.shift();
+  rt.blockedCount = (rt.blockedCount || 0) + 1;
+}
+
 // Décide d'une ouverture demandée par la page. Renvoie true si elle peut avoir lieu.
 function allowed(rt, details) {
   const wc = rt.wc;
   const origin = originOf(wc);
   if (origin && permissions.get(wc.session, origin, 'popups') === true) return true;
+  // `window.open` ne passe pas par le filtre réseau : refuser ici les domaines
+  // publicitaires listés, même quand un geste est présent.
+  if (adblock.shouldBlockPopup(details.url, wc.getURL())) { record(rt, details.url); return false; }
   const fresh = !!rt.gesture && Date.now() - rt.gesture < WINDOW;
   if (fresh) { rt.gesture = 0; rt.clickSpent = true; return true; }
-  const list = rt.blockedPopups || (rt.blockedPopups = []);
-  const url = /^https?:/i.test(details.url) ? details.url.slice(0, 2000) : '';
-  if (!list.some((x) => x.url === url)) list.push({ url, at: Date.now() });
-  if (list.length > KEEP) list.shift();
-  rt.blockedCount = (rt.blockedCount || 0) + 1;
+  record(rt, details.url);
   return false;
 }
 
