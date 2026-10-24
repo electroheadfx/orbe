@@ -90,7 +90,7 @@ last_mapped_at: 2026-10-24
   - Vault is per profile, stored in `passwords.json`, 0600 permissions, atomic write, `.bak` fallback
 - HTTP authentication: Basic, Digest, NTLM and proxy auth are handled by an Orbe sheet (`src/main/auth.js`); credentials are never persisted, Chromium keeps them for the session
 - Arc import: reads the Arc Safe Storage key from the macOS Keychain through `/usr/bin/security` (`src/main/import-arc-data.js:122-134`), derives the Chromium key (PBKDF2-SHA1, `saltysalt`, 1003 rounds, AES-128-CBC), then wipes the derived key
-- Web identity (Google, Microsoft, etc.) is ordinary site login inside the browser; Orbe strips the `Electron/x` token from the user agent so sites see a normal Chromium (`src/main/sessions.js:69-72`)
+- Web identity (Google, Microsoft, etc.) is ordinary site login inside the browser; the user agent is intentionally left intact, because stripping the `Electron/x` token produced a Chrome-identical UA while the `sec-ch-ua*` Client Hints still identified Electron, an inconsistency rejected by Google sign-in and Cloudflare (`secure.backblaze.com`) (`src/main/sessions.js:69`)
 
 ## Monitoring & Observability
 
