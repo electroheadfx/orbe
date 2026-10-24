@@ -40,6 +40,8 @@ Rester un navigateur immédiatement fluide et léger : chaque fonctionnalité s'
 - [ ] Réglages des modules : activer, désactiver et configurer chaque module par utilisateur, avec persistance.
 - [ ] Diagnostic et reprise : message clair si Herdr est absent ou injoignable ; reconnexion sans perdre les sessions Herdr.
 - [ ] Non-régression du cœur : fluidité au démarrage, raccourcis Arc, isolation des sessions et sécurité IPC.
+- [ ] Validation Phase 0 : spike TUI Herdr + `node-pty` + xterm 6 sur l'app packagée macOS ; repli NDJSON si échec.
+- [ ] Mise à niveau Electron 44.7.0 → 44.9.3 et CI sur `pull_request` avant le module terminal.
 
 ### Out of Scope
 
@@ -49,7 +51,8 @@ Rester un navigateur immédiatement fluide et léger : chaque fonctionnalité s'
 - Gestion native des panneaux Herdr dans Orbe — Herdr garde la gestion de ses panneaux.
 - Lancement, installation ou mise à jour automatique de Herdr — l'utilisateur fournit un serveur déjà lancé.
 - Synchronisation entre appareils, version Linux, distribution signée et notarisée — chantiers ultérieurs.
-- Support terminal Windows dans le premier jet — macOS d'abord (hypothèse à confirmer).
+- Support terminal Windows dans le premier jet — macOS d'abord.
+- Migration hors Electron (Rust, Tauri, CEF, Servo) — NO-GO pour ce milestone ; réévaluation uniquement si les déclencheurs du `SUMMARY.md` sont réunis.
 
 ## Context
 
@@ -62,11 +65,13 @@ Rester un navigateur immédiatement fluide et léger : chaque fonctionnalité s'
 - **Priorités d'arbitrage**, dans l'ordre : 1. fluidité et légèreté ; 2. fidélité à Arc pour les onglets ; 3. vie privée et sécurité à la Brave.
 - **Public** : le milestone terminal s'adresse d'abord à l'auteur ; Orbe reste par ailleurs un navigateur public et open source.
 - **Tests** : le dépôt n'a pas de Vitest malgré la consigne de `CLAUDE.md`. Les commandes réelles sont `npm test`, `npm run test:ui`, `npm run test:ext` et `node --test`.
+- **Recherche de domaine** : terminée le 2026-10-24, synthèse dans `.planning/research/SUMMARY.md`. Décisions : TUI Herdr complète via PTY ; migration hors Electron NO-GO ; Electron 44 EOL le 2027-03-02.
 
 ## Constraints
 
 - **Stack** : Electron 44.7 (Chromium 152), JavaScript ES2022 en CommonJS, sans framework, sans bundler et sans transpilation.
-- **Dépendance vendorisée** : xterm.js devient la première dépendance runtime, intégrée au dépôt et utilisable sans étape de build.
+- **Dépendances vendorisées** : xterm.js 6 et, si le spike le confirme, `node-pty` pour le PTY. `node-pty` est natif, hors asar, avec signature du `spawn-helper`. Aucune autre dépendance runtime.
+- **Packaging xterm.js 6** : ESM `.mjs` et mise à jour de `UI_TYPES` / MIME à valider en Phase 0 ; pas de bundler.
 - **Dépendance externe** : Herdr doit être installé et déjà lancé ; Orbe ne l'installe ni ne le démarre dans ce milestone.
 - **Plateforme** : macOS d'abord (machine de l'auteur), Windows à valider ensuite.
 - **Performance** : un module inactif ne doit ni se charger ni coûter au démarrage ; la latence clavier et la fluidité priment.
@@ -85,6 +90,10 @@ Rester un navigateur immédiatement fluide et léger : chaque fonctionnalité s'
 | Modules désactivés par défaut | Préserve la légèreté et laisse chaque utilisateur composer son Orbe | — Pending |
 | Modules internes d'abord, API externe plus tard | Réduit la surface de sécurité et le périmètre du premier milestone | — Pending |
 | Paint watercolor et notes après le terminal | Le terminal est la priorité ; le paint viendra dans un milestone ultérieur | — Pending |
+| TUI Herdr complète via PTY (`node-pty`) | Respecte le choix utilisateur et le CLI stable ; le NDJSON preview imposerait de reconstruire l'UI Herdr | — Pending : validé par spike Phase 0 |
+| Rester sur Electron 44.9.3 ; migration Rust reportée | Aucune option Rust ne préserve extensions Chrome, Widevine, profils et multi-webview sans 9–15 mois-personne | — Pending |
+| Adaptateur `HerdrSession` interchangeable | Permet de basculer TUI/PTY ↔ NDJSON sans toucher xterm, l'IPC ni le modèle d'onglets | — Pending |
+| Modules à manifestes statiques, désactivés par défaut | Coût nul au démarrage et contrôle utilisateur, conformément à la Core Value | — Pending |
 
 ## Evolution
 
@@ -104,4 +113,4 @@ Ce document évolue aux transitions de phase et aux frontières de milestone.
 4. Mise à jour du Contexte avec l'état courant
 
 ---
-*Dernière mise à jour : 2026-10-24 après initialisation*
+*Dernière mise à jour : 2026-10-24 après initialisation et recherche*
