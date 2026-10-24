@@ -5,10 +5,10 @@ current_phase: 1
 current_phase_name: Portes, CI et spikes
 status: planning
 stopped_at: ROADMAP.md et STATE.md écrits ; en attente de l'approbation du roadmap.
-last_updated: "2026-10-24T18:53:58.108Z"
+last_updated: "2026-10-24T19:36:32.614Z"
 last_activity: 2026-10-24
-last_activity_desc: "Completed quick task 261024-sxk: Deux correctifs navigateur : autoplay YouTube et popups publicitaires."
-state_head: 89ab9477ccabe6adce413208fc9f8bf6c7cf540b
+last_activity_desc: "Completed quick task 261024-txf: Bloquer les téléchargements automatiques lancés depuis une popup."
+state_head: 200db2ff177c602bbc1665a8bef4c1c05dbe4360
 progress:
   total_phases: 5
   completed_phases: 0
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-24)
 Phase: 1 of 5 (Portes, CI et spikes)
 Plan: 0 of 0 in current phase
 Status: Ready to plan
-Last activity: 2026-10-24 — Completed quick task 261024-sxk: Deux correctifs navigateur : autoplay YouTube et popups publicitaires.
+Last activity: 2026-10-24 — Completed quick task 261024-txf: Bloquer les téléchargements automatiques lancés depuis une popup.
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -85,6 +85,7 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 261024-sdx | Corriger le blocage Google/Backblaze causé par le user-agent d'Orbe. | 2026-10-24 | 9e8841c | [261024-sdx-corriger-le-blocage-google-backblaze-cau](./quick/261024-sdx-corriger-le-blocage-google-backblaze-cau/) |
 | 261024-sxk | Deux correctifs navigateur : autoplay YouTube et popups publicitaires. | 2026-10-24 | 89ab947 | [261024-sxk-deux-correctifs-navigateur-autoplay-yout](./quick/261024-sxk-deux-correctifs-navigateur-autoplay-yout/) |
+| 261024-txf | Bloquer les téléchargements automatiques lancés depuis une popup. | 2026-10-24 | 200db2f | [261024-txf-bloquer-les-t-l-chargements-automatiques](./quick/261024-txf-bloquer-les-t-l-chargements-automatiques/) |
 
 ## Deferred Items
 
