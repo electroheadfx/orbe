@@ -33,6 +33,9 @@ const env = {
   // Temps écoulé (ms) depuis la dernière vraie entrée de l'utilisateur dans cet
   // onglet ; Infinity s'il n'y en a pas eu ; null si ce n'est pas un onglet.
   gesture: () => null,
+  // Vrai si ce webContents a été ouvert par une page (popup) ; faux par défaut
+  // et pour tout onglet normal.
+  popup: () => false,
 };
 const GESTURE = 5000; // durée de l'activation passagère de Chromium
 
@@ -190,7 +193,7 @@ function pageState(wc) {
   const id = wc.id;
   st = { refused: new Set(), asked: false, at: 0 };
   pages.set(id, st);
-  wc.on('did-navigate', () => { st.refused.clear(); st.asked = false; st.downloads = 0; st.dlAsked = false; });
+  wc.on('did-navigate', () => { st.refused.clear(); st.asked = false; st.downloads = 0; st.dlAsked = false; st.dlPopupBlocked = false; });
   wc.once('destroyed', () => pages.delete(id));
   return st;
 }
@@ -251,8 +254,17 @@ async function external(entry, wc, origin, details) {
 // qui déclenche la question est refusé, puis relancé si la réponse est oui.
 // Renvoie true si le téléchargement peut partir.
 function downloadGate(ses, wc, { gesture = false, url = '' } = {}) {
-  if (gesture || !wc || wc.isDestroyed()) return true;
+  if (!wc || wc.isDestroyed()) return true;
   const since = env.gesture(wc);
+  // Une page ouvre une fenêtre après un geste, puis cette fenêtre lance un
+  // téléchargement : le geste hérité de la page ouvrante ne vaut pas entrée dans
+  // la popup. Seule une vraie interaction en son sein (moins de 5 s) la crédite.
+  if (since !== null && env.popup(wc) && !(since < GESTURE)) {
+    const st = pageState(wc);
+    if (!st.dlPopupBlocked) { st.dlPopupBlocked = true; env.toast(wc, t('dl.popupBlocked')); }
+    return false;
+  }
+  if (gesture) return true;
   if (since === null) return true; // pas un onglet (page d'extension, vue d'Orbe) : hors sujet
   const entry = memories.get(ses);
   if (!entry) return true;
