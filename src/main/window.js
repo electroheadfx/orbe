@@ -40,6 +40,11 @@ const UI_PREFS = Object.freeze({
   preload: UI_PRELOAD, sandbox: true, contextIsolation: true, nodeIntegration: false, nodeIntegrationInSubFrames: false,
   nodeIntegrationInWorker: false, webviewTag: false, webSecurity: true, allowRunningInsecureContent: false, experimentalFeatures: false,
 });
+// Electron laisse par défaut les médias démarrer seuls (`no-user-gesture-required`),
+// alors que Chrome exige une activation de la page. La préférence est posée par
+// vue, jamais par un switch global de politique d'autoplay (aucun `appendSwitch`),
+// pour que les sons d'interface de la coque continuent de jouer.
+const AUTOPLAY_PREFS = Object.freeze({ autoplayPolicy: 'document-user-activation-required' });
 // Textes venus d'une page web et montrés par l'interface : bornés avant de lui être envoyés.
 const STATUS_MAX = 2000;
 const ICON_MAX = 65536;
@@ -1063,10 +1068,14 @@ class OrbeWindow {
     // L'accès à l'interface dépend d'un drapeau posé par Orbe, jamais de
     // l'adresse, qu'une page web peut changer.
     const internal = tab.internal === true && isInternal(tab.url);
-    const view = existing || new WebContentsView(viewOptions || {
+    const view = existing || new WebContentsView(viewOptions ? {
+      // Les préférences fournies par Electron sont copiées puis complétées, jamais remplacées.
+      ...viewOptions,
+      webPreferences: { ...(viewOptions.webPreferences || {}), ...AUTOPLAY_PREFS },
+    } : {
       // nodeIntegrationInSubFrames : avec le bac à sable, cela ne fait qu'exécuter les scripts
       // de préchargement de la session dans les iframes (mots de passe) ; aucun accès à Node.
-      webPreferences: { session: this.sessionFor(id), sandbox: true, contextIsolation: true, nodeIntegrationInSubFrames: true, preload: internal ? UI_PRELOAD : undefined },
+      webPreferences: { ...AUTOPLAY_PREFS, session: this.sessionFor(id), sandbox: true, contextIsolation: true, nodeIntegrationInSubFrames: true, preload: internal ? UI_PRELOAD : undefined },
     });
     view.setBackgroundColor('#ffffff');
     rt = { id, view, wc: view.webContents, owner: this, loading: false, lastUsed: Date.now(), internal };
@@ -3306,8 +3315,12 @@ class OrbeWindow {
   // dernier clic dans la page d'origine s'il vient d'avoir lieu.
   openPeek(url, fromId, options, point) {
     this.closePeek({ animate: false });
-    const view = new WebContentsView(options || {
-      webPreferences: { session: this.sessionFor(fromId), sandbox: true, contextIsolation: true, nodeIntegrationInSubFrames: true },
+    const view = new WebContentsView(options ? {
+      // Les préférences fournies par Electron sont copiées puis complétées, jamais remplacées.
+      ...options,
+      webPreferences: { ...(options.webPreferences || {}), ...AUTOPLAY_PREFS },
+    } : {
+      webPreferences: { ...AUTOPLAY_PREFS, session: this.sessionFor(fromId), sandbox: true, contextIsolation: true, nodeIntegrationInSubFrames: true },
     });
     // Pas d'éclair blanc en thème sombre : la carte prend la teinte du thème
     // jusqu'à ce que la page ait de quoi s'afficher, puis le blanc habituel des pages.
