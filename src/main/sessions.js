@@ -16,6 +16,7 @@ const swipe = require('./swipe');
 
 const RENDERER_DIR = path.join(__dirname, '../renderer');
 const configured = new WeakSet();
+const ready = new WeakMap(); // session -> promesse de chargement de ses extensions
 const hooks = { onDownload: () => {}, ownerWindow: () => null, downloadDir: () => '' };
 const profileIds = new WeakMap(); // session -> identifiant du profil
 
@@ -78,6 +79,7 @@ const originOf = permissions.originOf;
 function configure(ses, { persist }) {
   if (configured.has(ses)) return ses;
   configured.add(ses);
+  ready.set(ses, Promise.resolve());
   // Bloqueur de publicités : il occupe l'unique écouteur onBeforeRequest.
   adblock.attach(ses);
   if (ses !== session.defaultSession) ses.protocol.handle('orbe', serveInternal);
@@ -93,12 +95,18 @@ function configure(ses, { persist }) {
   // Extensions installées : rechargées dans chaque profil à chaque démarrage.
   if (persist) {
     extApi.attach(ses); // API chrome.* manquantes, avant le premier chargement
-    extensions.loadInto(ses).then((r) => {
+    // La promesse est retenue : une navigation lancée pendant ce chargement est
+    // annulée par Chromium (ERR_FAILED, voir OrbeWindow.ensureView).
+    ready.set(ses, extensions.loadInto(ses).then((r) => {
       for (const f of (r && r.failed) || []) console.error('[orbe] extension', f.id, f.error);
-    }).catch((err) => console.error('[orbe] extensions', err));
+    }).catch((err) => console.error('[orbe] extensions', err)));
   }
   return ses;
 }
+
+// Les extensions d'un profil sont chargées après la création de sa session.
+// Les pages attendent cette promesse avant leur première navigation.
+const whenReady = (ses) => (ses && ready.get(ses)) || Promise.resolve();
 
 // Une session Chromium par profil : cookies et connexions séparés.
 function profileSession(id) {
@@ -124,4 +132,4 @@ function setupDefaultSession() {
   session.defaultSession.setPermissionRequestHandler((wc, p, cb) => cb(false));
 }
 
-module.exports = { uiStats, registerScheme, setupDefaultSession, mainSession, profileSession, incognitoSession, hooks, originOf, profileIdOf: (ses) => profileIds.get(ses) || '' };
+module.exports = { uiStats, registerScheme, setupDefaultSession, mainSession, profileSession, incognitoSession, whenReady, hooks, originOf, profileIdOf: (ses) => profileIds.get(ses) || '' };

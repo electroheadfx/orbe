@@ -1085,8 +1085,16 @@ class OrbeWindow {
       // Onglet rouvert (⇧⌘T, ⌘Z) : il retrouve son parcours — précédent et suivant fonctionnent.
       const past = this.histories.get(id);
       this.histories.delete(id);
-      if (past && past.entries[past.index] && past.entries[past.index].url === tab.url) rt.wc.navigationHistory.restore(past).catch(() => { if (!rt.wc.isDestroyed()) rt.wc.loadURL(tab.url).catch(() => {}); });
-      else rt.wc.loadURL(tab.url).catch(() => {});
+      // Les extensions du profil arrivent dans sa session après sa création
+      // (sessions.configure) : une navigation lancée entre-temps est annulée par
+      // Chromium (ERR_FAILED) et l'onglet resterait vide jusqu'à un rechargement.
+      // On attend donc que la session ait fini de charger ses extensions.
+      sessions.whenReady(this.sessionFor(id)).then(() => {
+        // Une navigation déjà lancée par l'utilisateur (adresse saisie) garde la main.
+        if (rt.wc.isDestroyed() || rt.wc.getURL() || rt.wc.isLoading()) return;
+        if (past && past.entries[past.index] && past.entries[past.index].url === tab.url) rt.wc.navigationHistory.restore(past).catch(() => { if (!rt.wc.isDestroyed()) rt.wc.loadURL(tab.url).catch(() => {}); });
+        else rt.wc.loadURL(tab.url).catch(() => {});
+      }).catch(() => {});
     }
     return rt;
   }
