@@ -246,12 +246,12 @@ async function external(entry, wc, origin, details) {
   return false;
 }
 
-// Téléchargements multiples. Un téléchargement que l'utilisateur n'a pas demandé
+// Téléchargements automatiques. Un téléchargement que l'utilisateur n'a pas demandé
 // (ni clic rapporté par le moteur, ni geste récent dans l'onglet, ni action d'Orbe)
-// est « automatique ». Une page a droit à un téléchargement automatique ; pour le
-// suivant, Orbe demande (autorisation « downloads », retenue par site comme les
-// autres). Décision synchrone, comme l'exige « will-download » : le téléchargement
-// qui déclenche la question est refusé, puis relancé si la réponse est oui.
+// est « automatique » : Orbe demande alors l'autorisation « downloads », retenue par
+// site comme les autres, avant de laisser partir le premier comme les suivants.
+// Décision synchrone, comme l'exige « will-download » : le téléchargement qui
+// déclenche la question est refusé, puis relancé si la réponse est oui.
 // Renvoie true si le téléchargement peut partir.
 function downloadGate(ses, wc, { gesture = false, url = '' } = {}) {
   if (!wc || wc.isDestroyed()) return true;
@@ -273,7 +273,6 @@ function downloadGate(ses, wc, { gesture = false, url = '' } = {}) {
   // Un geste récent dans l'onglet couvre UN téléchargement (lancé par script après le clic).
   if (since < GESTURE && now - since > (st.dlGesture || 0)) { st.dlGesture = now - since; return true; }
   st.downloads = (st.downloads || 0) + 1;
-  if (st.downloads <= 1) return true;
   const origin = originOf(wc.getURL());
   const known = origin && origin !== 'null' ? lookup(entry.memory(), origin, 'downloads') : undefined;
   if (known === true) return true;
