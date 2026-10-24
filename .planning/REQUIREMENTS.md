@@ -81,40 +81,40 @@ Différées. Suivies mais hors du roadmap courant.
 
 ## Traceability
 
-Sera rempli lors de la création du roadmap.
+Rempli lors de la création du roadmap (2026-10-24).
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MODULE-01 | — | Pending |
-| MODULE-02 | — | Pending |
-| MODULE-03 | — | Pending |
-| MODULE-04 | — | Pending |
-| MODULE-05 | — | Pending |
-| MODULE-06 | — | Pending |
-| TERM-01 | — | Pending |
-| TERM-02 | — | Pending |
-| TERM-03 | — | Pending |
-| TERM-04 | — | Pending |
-| TERM-05 | — | Pending |
-| TERM-06 | — | Pending |
-| TERM-07 | — | Pending |
-| TERM-08 | — | Pending |
-| TERM-09 | — | Pending |
-| TERM-10 | — | Pending |
-| SEC-01 | — | Pending |
-| SEC-02 | — | Pending |
-| SEC-03 | — | Pending |
-| CORE-01 | — | Pending |
-| CORE-02 | — | Pending |
-| CORE-03 | — | Pending |
-| CORE-04 | — | Pending |
-| CORE-05 | — | Pending |
+| MODULE-01 | Phase 2 | Pending |
+| MODULE-02 | Phase 2 | Pending |
+| MODULE-03 | Phase 2 | Pending |
+| MODULE-04 | Phase 2 | Pending |
+| MODULE-05 | Phase 2 | Pending |
+| MODULE-06 | Phase 2 | Pending |
+| TERM-01 | Phase 3 | Pending |
+| TERM-02 | Phase 3 | Pending |
+| TERM-03 | Phase 3 | Pending |
+| TERM-04 | Phase 3 | Pending |
+| TERM-05 | Phase 3 | Pending |
+| TERM-06 | Phase 4 | Pending |
+| TERM-07 | Phase 4 | Pending |
+| TERM-08 | Phase 3 | Pending |
+| TERM-09 | Phase 4 | Pending |
+| TERM-10 | Phase 3 | Pending |
+| SEC-01 | Phase 3 | Pending |
+| SEC-02 | Phase 3 | Pending |
+| SEC-03 | Phase 5 | Pending |
+| CORE-01 | Phase 1 | Pending |
+| CORE-02 | Phase 1 | Pending |
+| CORE-03 | Phase 1 | Pending |
+| CORE-04 | Phase 1 | Pending |
+| CORE-05 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24 ⚠️
+- Mapped to phases: 24
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-10-24*
-*Last updated: 2026-10-24 after initial definition*
+*Last updated: 2026-10-24 after roadmap creation*
